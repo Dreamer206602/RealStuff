@@ -1,9 +1,5 @@
 package com.example.ivor_hu.meizhi.utils;
 
-import android.sax.StartElementListener;
-import android.util.Log;
-
-import java.lang.ref.SoftReference;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -48,7 +44,6 @@ public class DateUtil {
 //        Log.d(TAG, "generateSequenceDateTillToday: today -- " + today);
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(start);
-//        calendar.add(Calendar.DAY_OF_MONTH, 1);
         while (calendar.getTime().before(today)){
             String date = format(calendar.getTime());
 //            Log.d(TAG, "generateSequenceDateTillToday: add -- " + date);

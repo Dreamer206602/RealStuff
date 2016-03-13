@@ -28,8 +28,6 @@ import com.example.ivor_hu.meizhi.utils.Constants;
 import com.example.ivor_hu.meizhi.utils.VolleyUtil;
 import com.example.ivor_hu.meizhi.widget.StuffAdapter;
 
-import io.realm.Realm;
-
 /**
  * Created by Ivor on 2016/3/3.
  */
@@ -45,7 +43,6 @@ public class StuffFragment extends Fragment {
     private UpdateResultReceiver updateResultReceiver;
     private boolean mIsLoadingMore = false;
     private boolean mIsRefreshing = false;
-    private Realm mRealm;
     private String mType;
     private boolean mIsNoMore = false;
 
@@ -63,7 +60,6 @@ public class StuffFragment extends Fragment {
         Log.d(TAG, "onCreate: ");
         super.onCreate(savedInstanceState);
         mType = getArguments().getString("type");
-        mRealm = Realm.getDefaultInstance();
         if (!mType.equals(Constants.TYPE_COLLECTIONS))
             updateResultReceiver = new UpdateResultReceiver();
     }
@@ -77,7 +73,7 @@ public class StuffFragment extends Fragment {
         mLayoutManager = new LinearLayoutManager(getActivity(), LinearLayoutManager.VERTICAL, false);
         mRecyclerView = $(view, R.id.stuff_recyclerview);
         mRecyclerView.setLayoutManager(mLayoutManager);
-        mRecyclerView.setAdapter(mAdapter = new StuffAdapter(getActivity(), mRealm, mType));
+        mRecyclerView.setAdapter(mAdapter = new StuffAdapter(getActivity(), mType));
         if (!mType.equals(Constants.TYPE_COLLECTIONS)) {
             mRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
                 @Override
@@ -239,8 +235,6 @@ public class StuffFragment extends Fragment {
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy: ");
-        mRealm.removeAllChangeListeners();
-        mRealm.close();
     }
 
     private <T extends View> T $(View view, int resId) {

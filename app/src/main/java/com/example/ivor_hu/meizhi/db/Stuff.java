@@ -2,17 +2,10 @@ package com.example.ivor_hu.meizhi.db;
 
 import java.util.Date;
 
-import io.realm.Realm;
-import io.realm.RealmObject;
-import io.realm.RealmResults;
-import io.realm.Sort;
-import io.realm.annotations.PrimaryKey;
-
 /**
  * Created by Ivor on 2016/2/28.
  */
-public class Stuff extends RealmObject {
-    @PrimaryKey
+public class Stuff {
     private String id;
     private String title, url, author, type;
     private Date publishedAt, lastChanged;
@@ -21,22 +14,15 @@ public class Stuff extends RealmObject {
     public Stuff() {
     }
 
-    public Stuff(String id, String type, String title, String url, String author, Date publishedAt) {
+    public Stuff(String id, String type, String title, String url, String author, Date publishedAt, Date lastChanged, boolean isLiked) {
         this.id = id;
         this.type = type;
         this.title = title;
         this.url = url;
         this.author = author;
         this.publishedAt = publishedAt;
-        this.lastChanged = publishedAt;
-        this.isLiked = false;
-
-    }
-
-    public static RealmResults<Stuff> all(Realm realm, String type) {
-        return realm.where(Stuff.class)
-                .equalTo("type", type)
-                .findAllSorted("publishedAt", Sort.DESCENDING);
+        this.lastChanged = lastChanged;
+        this.isLiked = isLiked;
     }
 
     public boolean isLiked() {

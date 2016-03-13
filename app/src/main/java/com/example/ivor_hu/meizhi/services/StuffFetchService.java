@@ -5,13 +5,14 @@ import android.content.Intent;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.RequestFuture;
+import com.example.ivor_hu.meizhi.APP;
+import com.example.ivor_hu.meizhi.StuffFragment;
+import com.example.ivor_hu.meizhi.db.DBManager;
 import com.example.ivor_hu.meizhi.db.Stuff;
 import com.example.ivor_hu.meizhi.utils.Constants;
 import com.example.ivor_hu.meizhi.utils.DateUtil;
 import com.example.ivor_hu.meizhi.utils.VolleyUtil;
-import com.example.ivor_hu.meizhi.StuffFragment;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,9 +22,6 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-
-import io.realm.Realm;
-import io.realm.RealmResults;
 
 /**
  * Created by Ivor on 2016/3/3.
@@ -58,21 +56,19 @@ public class StuffFetchService extends IntentService {
         latestUrl = Constants.getLatestUrlFromType(type);
         typeName = Constants.getTypeNameFromType(type);
 
-        Realm realm = Realm.getDefaultInstance();
-
-        RealmResults<Stuff> latest = Stuff.all(realm, type);
+        List<Stuff> latest = DBManager.getIns(APP.getContext()).queryAllStuffs(type);
 
         int fetched = 0;
         try {
             if (latest.isEmpty()) {
-                fetched = fetchLatest(realm);
+                fetched = fetchLatest();
                 Log.d(TAG, "no latest, fresh fetch");
             } else if (ACTION_FETCH_REFRESH.equals(intent.getAction())) {
-                Log.d(TAG, "latest fetch: " + latest.first().getPublishedAt());
-                fetched = fetchRefresh(realm, latest.first().getPublishedAt());
+                Log.d(TAG, "latest fetch: " + latest.get(0).getPublishedAt());
+                fetched = fetchRefresh(latest.get(0).getPublishedAt());
             } else if (ACTION_FETCH_MORE.equals(intent.getAction())) {
-                Log.d(TAG, "earliest fetch: " + latest.last().getPublishedAt());
-                fetched = fetchMore(realm, latest.last().getPublishedAt());
+                Log.d(TAG, "earliest fetch: " + latest.get(latest.size() - 1).getPublishedAt());
+                fetched = fetchMore(latest.get(latest.size() - 1).getPublishedAt());
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -84,24 +80,22 @@ public class StuffFetchService extends IntentService {
             e.printStackTrace();
         }
 
-        sendResult(intent, realm, fetched);
+        sendResult(intent, fetched);
     }
 
-    private void sendResult(Intent intent, Realm realm, int fetched) {
-        realm.close();
-
+    private void sendResult(Intent intent, int fetched) {
         Log.d(TAG, "finished fetching, actual fetched " + fetched);
 
         Intent broadcast = new Intent(ACTION_UPDATE_RESULT);
         broadcast.putExtra(EXTRA_FETCHED, fetched);
         broadcast.putExtra(EXTRA_TRIGGER, intent.getAction());
-        broadcast.putExtra(EXTRA_TYPE,type);
+        broadcast.putExtra(EXTRA_TYPE, type);
 
         localBroadcastManager.sendBroadcast(broadcast);
     }
 
 
-    private int fetchLatest(final Realm realm) throws InterruptedException, ExecutionException, ParseException, JSONException {
+    private int fetchLatest() throws InterruptedException, ExecutionException, ParseException, JSONException {
         RequestFuture<JSONObject> future = VolleyUtil.getInstance(this).getJSONSync(latestUrl, type);
 
         int fetched = 0;
@@ -123,8 +117,8 @@ public class StuffFetchService extends IntentService {
             title = androidObj.getString("desc");
             type = Constants.handleTypeStr(androidObj.getString("type"));
 
-            stuff = new Stuff(id, type, title, url, author, DateUtil.parse(date));
-            if (!saveToDb(realm, stuff)) {
+            stuff = new Stuff(id, type, title, url, author, DateUtil.parse(date), new Date(), false);
+            if (!saveToDb(stuff)) {
                 return i;
             }
             fetched++;
@@ -133,19 +127,19 @@ public class StuffFetchService extends IntentService {
         return fetched;
     }
 
-    private int fetchRefresh(Realm realm, Date publishedAt) throws InterruptedException, ExecutionException, ParseException, JSONException {
+    private int fetchRefresh(Date publishedAt) throws InterruptedException, ExecutionException, ParseException, JSONException {
         String after = DateUtil.format(publishedAt);
         List<String> dates = DateUtil.generateSequenceDateTillToday(publishedAt);
-        return fetch(realm, after, dates);
+        return fetch(after, dates);
     }
 
-    private int fetchMore(Realm realm, Date publishedAt) throws InterruptedException, ExecutionException, JSONException, ParseException {
+    private int fetchMore(Date publishedAt) throws InterruptedException, ExecutionException, JSONException, ParseException {
         String before = DateUtil.format(publishedAt);
         List<String> dates = DateUtil.generateSequenceDateBefore(publishedAt, 10);
-        return fetch(realm, before, dates);
+        return fetch(before, dates);
     }
 
-    private int fetch(Realm realm, String after, List<String> dates) throws InterruptedException, ExecutionException, JSONException, ParseException {
+    private int fetch(String after, List<String> dates) throws InterruptedException, ExecutionException, JSONException, ParseException {
         int fetched = 0;
         for (String date : dates) {
             if (date == null)
@@ -171,13 +165,16 @@ public class StuffFetchService extends IntentService {
                 if (stuff == null)
                     continue;
 
-                if (!saveToDb(realm, new Stuff(
+                if (!saveToDb(new Stuff(
                         stuff.getString("_id"),
                         Constants.handleTypeStr(stuff.getString("type")),
                         stuff.getString("desc"),
                         stuff.getString("url"),
                         stuff.getString("who"),
-                        DateUtil.parse(stuff.getString("publishedAt"))))) {
+                        DateUtil.parse(stuff.getString("publishedAt")),
+                        new Date(),
+                        false
+                ))) {
                     return fetched;
                 }
                 fetched++;
@@ -187,19 +184,8 @@ public class StuffFetchService extends IntentService {
         return fetched;
     }
 
-    private boolean saveToDb(Realm realm, Stuff stuff) {
-        realm.beginTransaction();
-
-        try {
-            realm.copyToRealm(stuff);
-            Log.d(TAG, "saveToDb: " + stuff.getPublishedAt());
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to fetch image", e);
-            realm.cancelTransaction();
-            return false;
-        }
-
-        realm.commitTransaction();
+    private boolean saveToDb(Stuff stuff) {
+        DBManager.getIns(APP.getContext()).insertStuff(stuff);
         return true;
     }
 }

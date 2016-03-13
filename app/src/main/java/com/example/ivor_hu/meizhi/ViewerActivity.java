@@ -3,7 +3,6 @@ package com.example.ivor_hu.meizhi;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -13,37 +12,26 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentStatePagerAdapter;
-import android.support.v4.app.NavUtils;
 import android.support.v4.app.SharedElementCallback;
 import android.support.v4.content.ContextCompat;
-import android.support.v4.view.ViewCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.transition.Explode;
-import android.transition.Fade;
-import android.transition.Slide;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.Toast;
 
+import com.example.ivor_hu.meizhi.db.DBManager;
 import com.example.ivor_hu.meizhi.db.Image;
 import com.example.ivor_hu.meizhi.utils.CommonUtil;
-import com.example.ivor_hu.meizhi.utils.Constants;
 import com.example.ivor_hu.meizhi.utils.PicUtil;
 
 import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-
-import io.realm.Realm;
-import io.realm.RealmChangeListener;
 
 /**
  * Created by Ivor on 2016/2/15.
@@ -68,7 +56,6 @@ public class ViewerActivity extends AppCompatActivity {
     private List<Image> mImages;
     private int mPos;
     private Toolbar mToolbar;
-    private Realm mRealm;
     private FragmentStatePagerAdapter mAdapter;
     private boolean mIsHidden = false;
 
@@ -81,16 +68,7 @@ public class ViewerActivity extends AppCompatActivity {
         initToolbar();
 
         mPos = getIntent().getIntExtra(GirlsFragment.POSTION, 0);
-        mRealm = Realm.getDefaultInstance();
-        mRealm.addChangeListener(new RealmChangeListener() {
-            @Override
-            public void onChange() {
-                mImages = Image.all(mRealm);
-                mAdapter.notifyDataSetChanged();
-            }
-        });
-
-        mImages = Image.all(mRealm);
+        mImages = DBManager.getIns(this).queryAllImages();
         mViewPager = (ViewPager) findViewById(R.id.viewer_pager);
         mViewPager.setAdapter(mAdapter = new FragmentStatePagerAdapter(getSupportFragmentManager()) {
             @Override
@@ -127,8 +105,6 @@ public class ViewerActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mRealm.removeAllChangeListeners();
-        mRealm.close();
     }
 
     @Override

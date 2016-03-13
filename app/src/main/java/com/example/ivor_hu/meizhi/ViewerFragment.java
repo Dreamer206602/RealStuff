@@ -1,15 +1,11 @@
 package com.example.ivor_hu.meizhi;
 
-import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.NavUtils;
 import android.support.v4.view.ViewCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -18,7 +14,6 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.resource.drawable.GlideDrawable;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
-import com.example.ivor_hu.meizhi.utils.Constants;
 import com.ortiz.touch.TouchImageView;
 
 /**
@@ -95,7 +90,7 @@ public class ViewerFragment extends Fragment implements RequestListener<String, 
 
     private void maybeStartPostponedEnterTransition() {
         if (mInitialShown) {
-            ((ViewerActivity) getActivity()).supportStartPostponedEnterTransition();
+            getActivity().supportStartPostponedEnterTransition();
         }
     }
 

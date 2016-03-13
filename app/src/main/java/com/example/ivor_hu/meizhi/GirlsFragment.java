@@ -18,15 +18,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 
-import com.example.ivor_hu.meizhi.db.Image;
 import com.example.ivor_hu.meizhi.services.ImageFetchService;
 import com.example.ivor_hu.meizhi.utils.CommonUtil;
 import com.example.ivor_hu.meizhi.utils.Constants;
 import com.example.ivor_hu.meizhi.utils.VolleyUtil;
 import com.example.ivor_hu.meizhi.widget.GirlsAdapter;
-
-import io.realm.Realm;
-
 
 /**
  * Created by Ivor on 2016/2/6.
@@ -44,7 +40,6 @@ public class GirlsFragment extends android.support.v4.app.Fragment {
     private SwipeRefreshLayout mRefreshLayout;
     private boolean mIsLoadingMore = false;
     private boolean mIsRefreshing = false;
-    private Realm mRealm;
     private String mType = Constants.TYPE_GIRLS;
 
     @Override
@@ -54,7 +49,6 @@ public class GirlsFragment extends android.support.v4.app.Fragment {
     }
 
     private void initData() {
-        mRealm = Realm.getDefaultInstance();
     }
 
 
@@ -68,7 +62,7 @@ public class GirlsFragment extends android.support.v4.app.Fragment {
         mLayoutManager = new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL);
         mRecyclerView.setLayoutManager(mLayoutManager);
         mRecyclerView.setItemAnimator(new DefaultItemAnimator());
-        mRecyclerView.setAdapter(mAdapter = new GirlsAdapter(getActivity(), mRealm));
+        mRecyclerView.setAdapter(mAdapter = new GirlsAdapter(getActivity()));
         mRecyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
@@ -203,8 +197,6 @@ public class GirlsFragment extends android.support.v4.app.Fragment {
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy: ");
-        mRealm.removeAllChangeListeners();
-        mRealm.close();
     }
 
     @Override
@@ -285,7 +277,7 @@ public class GirlsFragment extends android.support.v4.app.Fragment {
             public boolean onPreDraw() {
                 Log.d(TAG, "onPreDraw: supportStartPostponedEnterTransition");
                 mRecyclerView.getViewTreeObserver().removeOnPreDrawListener(this);
-                ((MainActivity) getActivity()).supportStartPostponedEnterTransition();
+                getActivity().supportStartPostponedEnterTransition();
                 return true;
             }
         });
@@ -293,7 +285,7 @@ public class GirlsFragment extends android.support.v4.app.Fragment {
     }
 
     public String getImageUrlAt(int i) {
-        return Image.all(mRealm).get(i).getUrl();
+        return mAdapter.getUrlAt(i);
     }
 
     public View getImageViewAt(int i) {

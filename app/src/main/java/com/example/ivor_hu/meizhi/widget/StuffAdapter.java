@@ -11,15 +11,12 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.example.ivor_hu.meizhi.R;
+import com.example.ivor_hu.meizhi.db.DBManager;
 import com.example.ivor_hu.meizhi.db.Stuff;
 import com.example.ivor_hu.meizhi.utils.Constants;
 import com.example.ivor_hu.meizhi.utils.DateUtil;
 
-import java.util.Date;
-
-import io.realm.Realm;
-import io.realm.RealmResults;
-import io.realm.Sort;
+import java.util.List;
 
 /**
  * Created by Ivor on 2016/2/28.
@@ -27,18 +24,17 @@ import io.realm.Sort;
 public class StuffAdapter extends RecyclerView.Adapter<StuffAdapter.Viewholder> {
     private static final String TAG = "StuffAdapter";
     private Context mContext;
-    private RealmResults<Stuff> mStuffs;
+    private List<Stuff> mStuffs;
     private OnItemClickListener mOnItemClickListener;
     private int lastStuffsNum;
-    private Realm realm;
     private String mType;
 
     public void updateInsertedData(int numImages, boolean isMore) {
         if (isMore) {
-            notifyItemRangeInserted(lastStuffsNum - 1, numImages);
+//            notifyItemRangeInserted(lastStuffsNum - 1, numImages);
             Log.d(TAG, "updateInsertedData: from " + (lastStuffsNum - 1) + " by " + numImages);
         } else {
-            notifyItemRangeInserted(0, numImages);
+//            notifyItemRangeInserted(0, numImages);
             Log.d(TAG, "updateInsertedData: from 0 to " + numImages);
         }
         lastStuffsNum += numImages;
@@ -54,17 +50,15 @@ public class StuffAdapter extends RecyclerView.Adapter<StuffAdapter.Viewholder> 
         mOnItemClickListener = onItemClickListener;
     }
 
-    public StuffAdapter(Context mContext, Realm realm, String type) {
+    public StuffAdapter(Context mContext, String type) {
         this.mContext = mContext;
-        this.realm = realm;
         this.mType = type;
         if (mType.equals(Constants.TYPE_COLLECTIONS)) {
-            mStuffs = realm
-                    .where(Stuff.class)
-                    .equalTo("isLiked", true)
-                    .findAllSorted("lastChanged", Sort.DESCENDING);
+//            mStuffs = realm.where(Stuff.class)
+//                    .equalTo("isLiked", true)
+//                    .findAllSorted("lastChanged", Sort.DESCENDING);
         } else {
-            mStuffs = Stuff.all(realm, mType);
+            mStuffs = DBManager.getIns(mContext).queryAllStuffs(mType);
         }
         lastStuffsNum = mStuffs.size();
         setHasStableIds(true);
@@ -145,13 +139,13 @@ public class StuffAdapter extends RecyclerView.Adapter<StuffAdapter.Viewholder> 
     }
 
     private void deleteItem(int position) {
-        realm.beginTransaction();
-        mStuffs.where()
-                .equalTo("id", mStuffs.get(position).getId())
-                .findFirst()
-                .setLiked(false);
-        realm.commitTransaction();
-        notifyDataSetChanged();
+//        realm.beginTransaction();
+//        mStuffs.where()
+//                .equalTo("id", mStuffs.get(position).getId())
+//                .findFirst()
+//                .setLiked(false);
+//        realm.commitTransaction();
+//        notifyDataSetChanged();
     }
 
     private void toggleLikeBtn(ImageButton likeBtn, int pos) {
@@ -166,16 +160,18 @@ public class StuffAdapter extends RecyclerView.Adapter<StuffAdapter.Viewholder> 
     }
 
     private void changeLiked(int pos, boolean isLiked) {
-        realm.beginTransaction();
-        Stuff stuff = mStuffs
-                .where()
-                .equalTo("id", mStuffs.get(pos).getId())
-                .findFirst();
-
-        stuff.setLiked(isLiked);
-        stuff.setLastChanged(new Date());
-        realm.commitTransaction();
-        notifyItemChanged(pos);
+//        realm.beginTransaction();
+//        Stuff stuff = mStuffs
+//                .where()
+//                .equalTo("id", mStuffs.get(pos).getId())
+//                .findFirst();
+//
+//        stuff.setLiked(isLiked);
+//        stuff.setLastChanged(new Date());
+//        realm.commitTransaction();
+//        notifyItemChanged(pos);
+        DBManager.getIns(mContext).updateStuffLiked(mStuffs.get(pos).getId(), isLiked);
+        notifyDataSetChanged();
     }
 
     public Stuff getStuffAt(int pos) {

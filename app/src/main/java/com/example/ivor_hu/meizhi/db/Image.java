@@ -8,35 +8,26 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.concurrent.ExecutionException;
 
-import io.realm.Realm;
-import io.realm.RealmObject;
-import io.realm.RealmResults;
-import io.realm.Sort;
-import io.realm.annotations.PrimaryKey;
-
 /**
  * Created by Ivor on 2016/2/9.
  */
-public class Image extends RealmObject {
-    @PrimaryKey
+public class Image {
     private String id;
     private String url;
     private int width;
     private int height;
     private Date publishedAt;
 
-    public Image() {
+    public Image(String id, String url, Date publishedAt) {
+        this(id, url, 0, 0, publishedAt);
     }
 
-    public Image(String id, String url, Date publishedAt) {
+    public Image(String id, String url, int width, int height, Date publishedAt) {
         this.id = id;
         this.url = url;
+        this.width = width;
+        this.height = height;
         this.publishedAt = publishedAt;
-    }
-
-    public static RealmResults<Image> all(Realm realm) {
-        return realm.where(Image.class)
-                .findAllSorted("publishedAt", Sort.DESCENDING);
     }
 
     public static Image persist(Image image, ImageFetcher imageFetcher)

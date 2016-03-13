@@ -7,11 +7,12 @@ import android.graphics.Point;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.RequestFuture;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.Target;
+import com.example.ivor_hu.meizhi.APP;
 import com.example.ivor_hu.meizhi.GirlsFragment;
+import com.example.ivor_hu.meizhi.db.DBManager;
 import com.example.ivor_hu.meizhi.db.Image;
 import com.example.ivor_hu.meizhi.net.ImageFetcher;
 import com.example.ivor_hu.meizhi.utils.Constants;
@@ -27,9 +28,6 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-
-import io.realm.Realm;
-import io.realm.RealmResults;
 
 /**
  * Created by Ivor on 2016/2/12.
@@ -55,21 +53,19 @@ public class ImageFetchService extends IntentService implements ImageFetcher {
 
     @Override
     protected void onHandleIntent(Intent intent) {
-        Realm realm = Realm.getDefaultInstance();
-
-        RealmResults<Image> latest = Image.all(realm);
+        List<Image> latest = DBManager.getIns(APP.getContext()).queryAllImages();
 
         int fetched = 0;
         try {
             if (latest.isEmpty()) {
-                fetched = fetchLatest(realm);
+                fetched = fetchLatest();
                 Log.d(TAG, "no latest, fresh fetch");
             } else if (ACTION_FETCH_REFRESH.equals(intent.getAction())) {
-                Log.d(TAG, "latest fetch: " + latest.first().getPublishedAt());
-                fetched = fetchRefresh(realm, latest.first().getPublishedAt());
+                Log.d(TAG, "latest fetch: " + latest.get(0).getPublishedAt());
+                fetched = fetchRefresh(latest.get(0).getPublishedAt());
             } else if (ACTION_FETCH_MORE.equals(intent.getAction())) {
-                Log.d(TAG, "earliest fetch: " + latest.last().getPublishedAt());
-                fetched = fetchMore(realm, latest.last().getPublishedAt());
+                Log.d(TAG, "earliest fetch: " + latest.get(latest.size() - 1).getPublishedAt());
+                fetched = fetchMore(latest.get(latest.size() - 1).getPublishedAt());
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -81,12 +77,10 @@ public class ImageFetchService extends IntentService implements ImageFetcher {
             e.printStackTrace();
         }
 
-        sendResult(intent, realm, fetched);
+        sendResult(intent, fetched);
     }
 
-    private void sendResult(Intent intent, Realm realm, int fetched) {
-        realm.close();
-
+    private void sendResult(Intent intent, int fetched) {
         Log.d(TAG, "finished fetching, actual fetched " + fetched);
 
         Intent broadcast = new Intent(ACTION_UPDATE_RESULT);
@@ -97,24 +91,24 @@ public class ImageFetchService extends IntentService implements ImageFetcher {
     }
 
 
-    private int fetchLatest(final Realm realm) throws InterruptedException, ExecutionException, ParseException, JSONException {
+    private int fetchLatest() throws InterruptedException, ExecutionException, ParseException, JSONException {
         RequestFuture<JSONObject> future = VolleyUtil.getInstance(this).getJSONSync(Constants.LATEST_GIRLS_URL, GirlsFragment.VOLLEY_TAG);
-        return updateImages(realm, future);
+        return updateImages(future);
     }
 
-    private int fetchRefresh(Realm realm, Date publishedAt) throws InterruptedException, ExecutionException, ParseException, JSONException {
+    private int fetchRefresh(Date publishedAt) throws InterruptedException, ExecutionException, ParseException, JSONException {
         String after = DateUtil.format(publishedAt);
         List<String> dates = DateUtil.generateSequenceDateTillToday(publishedAt);
-        return fetch(realm, after, dates);
+        return fetch(after, dates);
     }
 
-    private int fetchMore(Realm realm, Date publishedAt) throws InterruptedException, ExecutionException, JSONException, ParseException {
+    private int fetchMore(Date publishedAt) throws InterruptedException, ExecutionException, JSONException, ParseException {
         String before = DateUtil.format(publishedAt);
         List<String> dates = DateUtil.generateSequenceDateBefore(publishedAt, 20);
-        return fetch(realm, before, dates);
+        return fetch(before, dates);
     }
 
-    private int fetch(Realm realm, String baseline, List<String> dates) throws InterruptedException, ExecutionException, JSONException, ParseException {
+    private int fetch(String baseline, List<String> dates) throws InterruptedException, ExecutionException, JSONException, ParseException {
         int fetched = 0;
         for (String date : dates) {
             Log.d(TAG, "fetchRefresh: " + date);
@@ -136,7 +130,7 @@ public class ImageFetchService extends IntentService implements ImageFetcher {
             if (img == null)
                 continue;
 
-            if (!saveToDb(realm, new Image(img.getString("_id"), img.getString("url"), DateUtil.parse(img.getString("publishedAt"))))) {
+            if (!saveToDb(new Image(img.getString("_id"), img.getString("url"), DateUtil.parse(img.getString("publishedAt"))))) {
                 return fetched;
             }
             fetched++;
@@ -144,7 +138,7 @@ public class ImageFetchService extends IntentService implements ImageFetcher {
         return fetched;
     }
 
-    private int updateImages(Realm realm, RequestFuture<JSONObject> future) throws JSONException, ExecutionException, InterruptedException, ParseException {
+    private int updateImages(RequestFuture<JSONObject> future) throws JSONException, ExecutionException, InterruptedException, ParseException {
         int fetched = 0;
         JSONObject response = future.get();
         if (response.getBoolean("error"))
@@ -157,7 +151,7 @@ public class ImageFetchService extends IntentService implements ImageFetcher {
             url = array.getJSONObject(i).getString("url");
             date = array.getJSONObject(i).getString("publishedAt");
             id = array.getJSONObject(i).getString("_id");
-            if (!saveToDb(realm, new Image(id, url, DateUtil.parse(date)))) {
+            if (!saveToDb(new Image(id, url, DateUtil.parse(date)))) {
                 return i;
             }
             fetched++;
@@ -166,19 +160,16 @@ public class ImageFetchService extends IntentService implements ImageFetcher {
         return fetched;
     }
 
-    private boolean saveToDb(Realm realm, Image image) {
-        realm.beginTransaction();
-
+    private boolean saveToDb(Image image) {
         try {
-            realm.copyToRealm(Image.persist(image, this));
-            Log.d(TAG, "saveToDb: " + image.getPublishedAt());
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to fetch image", e);
-            realm.cancelTransaction();
-            return false;
+            DBManager.getIns(APP.getContext()).insertImage(Image.persist(image, this));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
         }
-
-        realm.commitTransaction();
         return true;
     }
 

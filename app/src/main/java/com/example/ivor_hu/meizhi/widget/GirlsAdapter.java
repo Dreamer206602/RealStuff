@@ -14,11 +14,10 @@ import android.view.ViewGroup;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.ivor_hu.meizhi.R;
+import com.example.ivor_hu.meizhi.db.DBManager;
 import com.example.ivor_hu.meizhi.db.Image;
 
-import io.realm.Realm;
-import io.realm.RealmResults;
-
+import java.util.List;
 
 /**
  * Created by Ivor on 2016/2/6.
@@ -27,15 +26,13 @@ public class GirlsAdapter extends RecyclerView.Adapter<GirlsAdapter.MyViewHolder
     private static final String TAG = "GirlsAdapter";
 
     private Context mContext;
-    private RealmResults<Image> mImages;
-    private Realm realm;
+    private List<Image> mImages;
     private OnItemClickListener mOnItemClickListener;
     private int lastImagesNum;
 
-    public GirlsAdapter(Context mContext, Realm realm) {
+    public GirlsAdapter(Context mContext) {
         this.mContext = mContext;
-        this.realm = realm;
-        mImages = Image.all(realm);
+        mImages = DBManager.getIns(mContext).queryAllImages();
         lastImagesNum = mImages.size();
         setHasStableIds(true);
     }
