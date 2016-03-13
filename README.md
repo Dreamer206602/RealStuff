@@ -31,8 +31,5 @@ Android 4.4+
 ![image](https://github.com/IvorHu/RealStuff/blob/master/screenshoots/drawermenu.PNG)
 ![image](https://github.com/IvorHu/RealStuff/blob/master/screenshoots/about.PNG)
 
-## 已知bug
-目前使用Realm遇上一点bug，在虚拟机，魅族手机和Nokia N1上测试没问题，但在华为和红米上出现闪退。。。
-
 ## TODO
 使用SQLite替代Realm
